@@ -1,0 +1,82 @@
+version: "3.7"
+
+services:
+
+  zaphub_backend:
+    image: ghcr.io/L1onex/zaphub-backend:latest
+    volumes:
+      - zaphub_backend_public:/usr/src/app/public
+      - zaphub_backend_private:/usr/src/app/private
+    environment:
+      - FRONTEND_HOST=seudominio.com.br
+      - BACKEND_PATH=/backend
+      - EMAIL_ADDRESS=admin@example.com
+      - TZ=America/Sao_Paulo
+      - BACKEND_URL=https://seudominio.com.br/backend
+      - FRONTEND_URL=https://seudominio.com.br
+      - DB_DIALECT=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_NAME=zaphub
+      - DB_PASS=Mfcd62!!Mfcd62!!
+      - REDIS_URI=redis://redis:6379/
+      - USER_LIMIT=10000
+      - CONNECTIONS_LIMIT=100000
+      - CLOSED_SEND_BY_ME=true
+      - VERIFY_TOKEN=zaphub
+    networks:
+      - network_public
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2048M
+
+  zaphub_frontend:
+    image: ghcr.io/L1onex/zaphub-frontend:latest
+    volumes:
+      - zaphub_backend_public:/var/www/backend-public
+    environment:
+      - FRONTEND_HOST=seudominio.com.br
+      - BACKEND_PATH=/backend
+      - BACKEND_HOST=seudominio.com.br
+      - BACKEND_PROTOCOL=https
+      - BACKEND_PORT=443
+      - EMAIL_ADDRESS=admin@example.com
+    networks:
+      - network_public
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2048M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.zaphub_frontend.rule=Host(`seudominio.com.br`)
+        - traefik.http.routers.zaphub_frontend.entrypoints=websecure
+        - traefik.http.routers.zaphub_frontend.tls.certresolver=letsencryptresolver
+        - traefik.http.services.zaphub_frontend.loadbalancer.server.port=80
+
+volumes:
+  zaphub_backend_public:
+    external: true
+    name: zaphub_backend_public
+  zaphub_backend_private:
+    external: true
+    name: zaphub_backend_private
+
+networks:
+  network_public:
+    external: true
+    name: network_public
